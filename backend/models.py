@@ -1,17 +1,9 @@
-from beanie import Document, PydanticObjectId
-from fastapi_users.db import BeanieBaseUser, BeanieUserDatabase
-from pydantic import Field
+from fastapi_users.db import SQLAlchemyBaseUserTable
+from sqlalchemy.orm import DeclarativeBase
 
-class User(BeanieBaseUser, Document):
+class Base(DeclarativeBase):
     pass
 
-from fastapi_users import schemas
-
-class UserRead(schemas.BaseUser[PydanticObjectId]):
-    pass
-
-class UserCreate(schemas.BaseUserCreate):
-    pass
-
-class UserUpdate(schemas.BaseUserUpdate):
+class User(SQLAlchemyBaseUserTable[int], Base):
+    __tablename__ = "user"
     pass

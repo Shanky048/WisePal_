@@ -1,26 +1,18 @@
-# In backend/main.py
-
 import os
 from typing import Optional
-import datetime
-import certifi  # <--- 1. ADD THIS IMPORT
 
-from beanie import PydanticObjectId, init_beanie
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi_users import BaseUserManager, FastAPIUsers
-from fastapi_users.authentication import (
-    AuthenticationBackend,
-    BearerTransport,
-    JWTStrategy,
-)
-from fastapi_users.db import BeanieUserDatabase
-from motor.motor_asyncio import AsyncIOMotorClient
 import google.generativeai as genai
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from models import User, UserCreate, UserRead, UserUpdate
+# Import new SQLAlchemy components
+from fastapi_users import FastAPIUsers
+from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
+from sqlalchemy import create_engine
+from db import get_user_db
+from models import User, Base
 
 # --- Application Setup ---
 load_dotenv()
@@ -29,7 +21,7 @@ app = FastAPI()
 # --- CORS Configuration ---
 origins = [
     "http://localhost:3000",
-    "https://wise-pal-shanky048.vercel.app" # Replace with your actual Vercel URL if different
+    "https://wise-pal-shanky048.vercel.app" # Make sure this is your Vercel URL
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -40,20 +32,14 @@ app.add_middleware(
 )
 
 # --- Database and User Model Setup ---
-DATABASE_URL = os.getenv("MONGO_URI")
+DATABASE_URL = os.getenv("DATABASE_URL")
 SECRET = os.getenv("SECRET")
 
-# --- 2. THIS BLOCK IS UPDATED TO USE certifi ---
-ca = certifi.where()
-client = AsyncIOMotorClient(DATABASE_URL, tlsCAFile=ca)
-# ------------------------------------------------
+# This is a synchronous operation that creates the 'user' table if it doesn't exist
+# It's okay to do this once on startup
+engine = create_engine(DATABASE_URL)
+Base.metadata.create_all(engine)
 
-db = client["wisepal_db"]
-conversation_collection = db.get_collection("conversations")
-
-@app.on_event("startup")
-async def on_startup():
-    await init_beanie(database=db, document_models=[User])
 
 # --- AI Model Configuration ---
 try:
@@ -61,60 +47,49 @@ try:
     if not api_key:
         raise ValueError("GOOGLE_API_KEY not found in .env file")
     genai.configure(api_key=api_key)
-    ai_model = genai.GenerativeModel('gemini-1.5-flash-latest') # Using a stable model name
+    ai_model = genai.GenerativeModel('gemini-1.5-flash-latest')
 except Exception as e:
     print(f"Error during AI model initialization: {e}")
     ai_model = None
 
 # --- Authentication Logic ---
-class UserManager(BaseUserManager[User, PydanticObjectId]):
-    reset_password_token_secret = SECRET
-    verification_token_secret = SECRET
-
-    async def on_after_register(self, user: User, request: Optional[dict] = None):
-        print(f"User {user.id} has registered.")
-    
-    def parse_id(self, id: str) -> PydanticObjectId:
-        return PydanticObjectId(id)
-
-async def get_user_db():
-    yield BeanieUserDatabase(User)
-
-async def get_user_manager(user_db: BeanieUserDatabase = Depends(get_user_db)):
-    yield UserManager(user_db)
-
 bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
+
 def get_jwt_strategy() -> JWTStrategy:
     return JWTStrategy(secret=SECRET, lifetime_seconds=3600)
 
-auth_backend = AuthenticationBackend(name="jwt", transport=bearer_transport, get_strategy=get_jwt_strategy)
-fastapi_users = FastAPIUsers[User, PydanticObjectId](get_user_manager, [auth_backend])
+auth_backend = AuthenticationBackend(
+    name="jwt",
+    transport=bearer_transport,
+    get_strategy=get_jwt_strategy,
+)
+
+# We now use an integer for the user ID with SQLAlchemy
+fastapi_users = FastAPIUsers[User, int](
+    get_user_db,
+    [auth_backend],
+)
 
 current_active_user = fastapi_users.current_user(active=True)
 
-# --- Pydantic Models for Chat ---
+# --- Pydantic Models for API ---
+class UserRead(fastapi_users.schemas.BaseUser[int]):
+    pass
+
+class UserCreate(fastapi_users.schemas.BaseUserCreate):
+    pass
+
 class ChatRequest(BaseModel):
     message: str
-
-class Message(BaseModel):
-    role: str
-    content: str
-    timestamp: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
-
-    class Config:
-        json_encoders = {
-            datetime.datetime: lambda dt: dt.isoformat()
-        }
 
 # --- API Routers ---
 app.include_router(fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"])
 app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
-app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
 
 # --- Main Application Endpoints ---
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the WisePal API"}
+    return {"message": "Welcome to the WisePal API with PostgreSQL!"}
 
 @app.post("/chat")
 async def chat(request: ChatRequest, user: User = Depends(current_active_user)):
@@ -125,37 +100,11 @@ async def chat(request: ChatRequest, user: User = Depends(current_active_user)):
         user_message_content = request.message
         response = ai_model.generate_content(user_message_content)
         ai_reply_content = response.text
-
-        user_message = Message(role="user", content=user_message_content)
-        ai_message = Message(role="assistant", content=ai_reply_content)
-
-        new_conversation = {
-            "messages": [user_message.model_dump(), ai_message.model_dump()],
-            "created_at": datetime.datetime.utcnow(),
-            "user_id": user.id
-        }
-        await conversation_collection.insert_one(new_conversation)
+        
+        # NOTE: We will add saving chat history to SQL in the next step.
+        # For now, let's just make sure the chat works.
+        
         return {"response": ai_reply_content}
     except Exception as e:
         print(f"An error occurred during chat: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to process chat: {e}")
-
-class Conversation(BaseModel):
-    messages: list[Message]
-
-@app.get("/conversations", response_model=list[Conversation])
-async def get_conversations(user: User = Depends(current_active_user)):
-    conversations_cursor = conversation_collection.find(
-        {"user_id": user.id}
-    ).sort("created_at", 1) # Sort by creation time, oldest first
-    
-    conversations = await conversations_cursor.to_list(length=None)
-
-    # Manually convert ObjectId to string for JSON serialization
-    for convo in conversations:
-        if '_id' in convo:
-            convo['_id'] = str(convo['_id'])
-        if 'user_id' in convo:
-            convo['user_id'] = str(convo['user_id'])
-            
-    return conversations
