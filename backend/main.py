@@ -38,7 +38,6 @@ SECRET = os.getenv("SECRET")
 # This is a synchronous operation that creates the 'user' table if it doesn't exist
 # It's okay to do this once on startup
 engine = create_engine(DATABASE_URL)
-Base.metadata.create_all(engine)
 
 
 # --- AI Model Configuration ---
