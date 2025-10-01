@@ -7,3 +7,4 @@ motor
 fastapi-users[beanie,jwt]
 passlib[bcrypt]
 gunicorn
+certifi 
