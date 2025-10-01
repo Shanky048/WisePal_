@@ -1,5 +1,8 @@
+// In frontend/app/register/page.tsx
+
 "use client";
 import { useState } from "react";
+import Link from 'next/link'; // --- ADD THIS IMPORT ---
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -13,8 +16,6 @@ export default function RegisterPage() {
     setSuccess("");
 
     try {
-      // --- THIS IS THE FIX ---
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -33,56 +34,35 @@ export default function RegisterPage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 text-white p-8">
-        {/* The form JSX is the same */}
-        <div className="w-full max-w-md bg-gray-800 rounded-lg shadow-lg p-8">
+      <div className="w-full max-w-md bg-gray-800 rounded-lg shadow-lg p-8">
         <h1 className="text-3xl font-bold text-center text-purple-400 mb-6">
-            Create Your WisePal Account
+          Create Your WisePal Account
         </h1>
         <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-            <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-300"
-            >
-                Email
-            </label>
-            <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-            />
-            </div>
-            <div>
-            <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-300"
-            >
-                Password
-            </label>
-            <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-            />
-            </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {success && <p className="text-green-500 text-sm text-center">{success}</p>}
-            <div>
-            <button
-                type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition"
-            >
-                Register
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-300">Email</label>
+            <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500" />
+          </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-300">Password</label>
+            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500" />
+          </div>
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+          {success && <p className="text-green-500 text-sm text-center">{success}</p>}
+          <div>
+            <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition">
+              Register
             </button>
-            </div>
+          </div>
         </form>
-        </div>
+        {/* --- ADD THIS ENTIRE BLOCK --- */}
+        <p className="mt-4 text-center text-sm text-gray-400">
+          Already have an account?{" "}
+          <Link href="/login" className="font-medium text-purple-400 hover:text-purple-300">
+            Login
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }
