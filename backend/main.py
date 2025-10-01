@@ -7,18 +7,18 @@ from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
 from pydantic import BaseModel
 
-# Import new SQLAlchemy components
+
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
 from sqlalchemy import create_engine
 from db import get_user_db
 from models import User, Base
 
-# --- Application Setup ---
+
 load_dotenv()
 app = FastAPI()
 
-# --- CORS Configuration ---
+
 origins = [
     "http://localhost:3000",
     "https://wise-pal-shanky048.vercel.app" # Make sure this is your Vercel URL

@@ -5,11 +5,11 @@ google-generativeai
 gunicorn
 certifi
 
-# New SQL Libraries
+
 sqlalchemy
-psycopg2-binary
+asyncpg
 alembic
 
-# FastAPI Users with SQLAlchemy support
+
 fastapi-users[sqlalchemy]
 fastapi-users-db-sqlalchemy
