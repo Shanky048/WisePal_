@@ -1,138 +1,88 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 
+export default function RegisterPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-
-export default function Home() {
-  const { token, logout } = useAuth();
-  const router = useRouter();
-  
-  
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false); 
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true); 
-
-  
-  useEffect(() => {
-    if (!token) {
-      
-      router.push("/login");
-    } else {
-      
-      setIsCheckingAuth(false);
-      
-    }
-  }, [token, router]);
-
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    setError("");
+    setSuccess("");
 
-    const userMessage: Message = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
-
-    
     try {
-      const response = await fetch("http://localhost:8000/chat", {
+      // --- THIS IS THE FIX ---
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const response = await fetch(`${apiUrl}/auth/register`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`, 
-        },
-        body: JSON.stringify({ message: input }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to get a response from the AI.");
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Registration failed");
       }
-
-      const data = await response.json();
-      const aiMessage: Message = { role: "assistant", content: data.response };
-      setMessages((prev) => [...prev, aiMessage]);
-
-    } catch (error) {
-      console.error(error);
-      const errorMessage: Message = { role: "assistant", content: "Sorry, I couldn't connect to the AI. Please try again." };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
+      setSuccess("Registration successful! You can now log in.");
+    } catch (err: any) {
+      setError(err.message);
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
-  };
-
-  
-  if (isCheckingAuth) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-900">
-        <p className="text-white">Loading...</p>
-      </div>
-    );
-  }
-
-  
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <header className="bg-gray-800 p-4 flex justify-between items-center shadow-md">
-        <h1 className="text-xl font-bold text-purple-400">WisePal AI</h1>
-        <button
-          onClick={handleLogout}
-          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition"
-        >
-          Logout
-        </button>
-      </header>
-
-      {/* Chat Messages Area */}
-      <main className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.map((msg, index) => (
-          <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-lg p-3 rounded-lg ${msg.role === 'user' ? 'bg-purple-700' : 'bg-gray-700'}`}>
-              <p>{msg.content}</p>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 text-white p-8">
+        {/* The form JSX is the same */}
+        <div className="w-full max-w-md bg-gray-800 rounded-lg shadow-lg p-8">
+        <h1 className="text-3xl font-bold text-center text-purple-400 mb-6">
+            Create Your WisePal Account
+        </h1>
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+            <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-300"
+            >
+                Email
+            </label>
+            <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+            />
             </div>
-          </div>
-        ))}
-         {isLoading && (
-            <div className="flex justify-start">
-                <div className="max-w-lg p-3 rounded-lg bg-gray-700">
-                    <p className="animate-pulse">Thinking...</p>
-                </div>
+            <div>
+            <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-300"
+            >
+                Password
+            </label>
+            <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+            />
             </div>
-        )}
-      </main>
-
-      {/* Input Form */}
-      <footer className="bg-gray-800 p-4">
-        <form onSubmit={handleSendMessage} className="flex space-x-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask WisePal anything..."
-            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-          />
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none disabled:bg-purple-900 disabled:cursor-not-allowed"
-          >
-            Send
-          </button>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {success && <p className="text-green-500 text-sm text-center">{success}</p>}
+            <div>
+            <button
+                type="submit"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition"
+            >
+                Register
+            </button>
+            </div>
         </form>
-      </footer>
-    </div>
+        </div>
+    </main>
   );
 }
