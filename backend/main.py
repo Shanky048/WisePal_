@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from fastapi_users import FastAPIUsers, schemas  # <--- 1. ADD `schemas` HERE
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
 from sqlalchemy import create_engine
-from db import get_user_db
+from db import get_user_db, engine
 from models import User, Base
 
 # --- Application Setup ---
