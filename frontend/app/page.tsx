@@ -20,12 +20,13 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // --- THIS HOOK IS UPDATED ---
+  // This effect checks for authentication and fetches chat history
   useEffect(() => {
     const fetchHistory = async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       if (token) {
         try {
-          const response = await fetch("http://localhost:8000/conversations", {
+          const response = await fetch(`${apiUrl}/conversations`, {
             headers: {
               "Authorization": `Bearer ${token}`,
             },
@@ -34,13 +35,10 @@ export default function Home() {
             throw new Error("Could not fetch chat history.");
           }
           const history = await response.json();
-          // The backend returns conversations, each with a 'messages' array.
-          // We'll flatten this into a single list of messages for display.
           const formattedMessages = history.flatMap((conv: any) => conv.messages);
           setMessages(formattedMessages);
         } catch (error) {
           console.error(error);
-          // Handle error, e.g., show a notification
         } finally {
           setIsCheckingAuth(false);
         }
@@ -49,7 +47,9 @@ export default function Home() {
       }
     };
 
-    fetchHistory();
+    if (token !== null) { // Only run if token state is determined
+        fetchHistory();
+    }
   }, [token, router]);
 
 
@@ -70,7 +70,8 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/chat", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const response = await fetch(`${apiUrl}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -136,7 +137,6 @@ export default function Home() {
                 </div>
             </div>
         )}
-        {/* Empty div to mark the end of the chat for auto-scrolling */}
         <div ref={chatEndRef} />
       </main>
 
