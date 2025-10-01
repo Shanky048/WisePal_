@@ -22,7 +22,7 @@ from models import User, UserCreate, UserRead, UserUpdate
 load_dotenv()
 app = FastAPI()
 
-origins = ["http://localhost:3000"]
+origins = ["http://localhost:3000", "https://wise-pal.vercel.app"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
