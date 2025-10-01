@@ -1,25 +1,27 @@
 "use client";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useRouter } from "next/navigation"; // --- 1. IMPORT THE ROUTER ---
+import { useRouter } from "next/navigation";
+import Link from "next/link"; 
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { login } = useAuth();
-  const router = useRouter(); // --- 2. INITIALIZE THE ROUTER ---
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       const formData = new URLSearchParams();
       formData.append("username", email);
       formData.append("password", password);
 
-      const response = await fetch("http://localhost:8000/auth/jwt/login", {
+      const response = await fetch(`${apiUrl}/auth/jwt/login`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: formData.toString(),
@@ -34,7 +36,7 @@ export default function LoginPage() {
 
       const data = await response.json();
       login(data.access_token);
-      router.push("/"); // --- 3. CHANGE THE REDIRECT METHOD ---
+      router.push("/");
     } catch (err: any) {
       setError(err.message);
     }
@@ -91,12 +93,10 @@ export default function LoginPage() {
         </form>
         <p className="mt-4 text-center text-sm text-gray-400">
           Don't have an account?{" "}
-          <a
-            href="/register"
-            className="font-medium text-purple-400 hover:text-purple-300"
-          >
+          {/* --- 2. CHANGE <a> TO <Link> --- */}
+          <Link href="/register" className="font-medium text-purple-400 hover:text-purple-300">
             Register
-          </a>
+          </Link>
         </p>
       </div>
     </main>
