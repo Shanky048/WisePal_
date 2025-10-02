@@ -9,8 +9,13 @@ import google.generativeai as genai
 from pydantic import BaseModel
 
 
-# Import new SQLAlchemy components
-from fastapi_users import FastAPIUsers, schemas
+
+from fastapi_users import (
+    FastAPIUsers,
+    schemas,
+    BaseUserManager,      
+    IntegerIDMixin        
+)
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
 from sqlalchemy import create_engine
 from db import get_user_db, engine
@@ -42,6 +47,17 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 SECRET = os.getenv("SECRET")
 
 
+from fastapi_users.db import SQLAlchemyUserDatabase
+from fastapi_users import BaseUserManager, IntegerIDMixin
+
+class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
+    reset_password_token_secret = SECRET
+    verification_token_secret = SECRET
+
+async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
+    yield UserManager(user_db)
+
+
 # --- AI Model Configuration ---
 try:
     api_key = os.getenv("GOOGLE_API_KEY")
@@ -70,7 +86,7 @@ auth_backend = AuthenticationBackend(
 
 
 fastapi_users = FastAPIUsers[User, int](
-    get_user_db,
+    get_user_manager,
     [auth_backend],
 )
 
